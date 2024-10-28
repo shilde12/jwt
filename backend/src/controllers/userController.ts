@@ -1,41 +1,83 @@
 import { Request, Response } from "express";
-import User from "../models/userModel";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { database } from "../config/database";
+import { User } from "../models/User";
 
-export const register = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+export class UserController {
+  async register(req: Request, res: Response) {
+    try {
+      const { email, password } = req.body;
 
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      role: "user",
-    });
-    res.status(201).json({ message: "User registered successfully!", user });
-  } catch (error) {
-    res.status(500).json({ error: "Error registering user" });
-  }
-};
+      // Verificar se o usuário já existe
+      database.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        async (err, user) => {
+          if (err) {
+            return res.status(500).json({ error: "Database error" });
+          }
 
-export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+          if (user) {
+            return res.status(400).json({ error: "User already exists" });
+          }
 
-  try {
-    const user = await User.findOne({ where: { email } });
+          // Criar novo usuário
+          const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: "Invalid credentials" });
+          database.run(
+            "INSERT INTO users (email, password, role) VALUES (?, ?, ?)",
+            [email, hashedPassword, "user"],
+            function (err) {
+              if (err) {
+                return res.status(500).json({ error: "Error creating user" });
+              }
+
+              res.status(201).json({
+                message: "User created successfully",
+                userId: this.lastID,
+              });
+            }
+          );
+        }
+      );
+    } catch (error) {
+      res.status(500).json({ error: "Server error" });
     }
-
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      "your_jwt_secret",
-      { expiresIn: "1h" }
-    );
-    res.status(200).json({ token, role: user.role });
-  } catch (error) {
-    res.status(500).json({ error: "Error logging in" });
   }
-};
+
+  async login(req: Request, res: Response) {
+    try {
+      const { email, password } = req.body;
+
+      database.get(
+        "SELECT * FROM users WHERE email = ?",
+        [email],
+        async (err, user: User) => {
+          if (err) {
+            return res.status(500).json({ error: "Database error" });
+          }
+
+          if (!user) {
+            return res.status(401).json({ error: "Invalid credentials" });
+          }
+
+          const validPassword = await bcrypt.compare(password, user.password);
+          if (!validPassword) {
+            return res.status(401).json({ error: "Invalid credentials" });
+          }
+
+          const token = jwt.sign(
+            { id: user.id, role: user.role },
+            process.env.JWT_SECRET || "fallback_secret",
+            { expiresIn: "1h" }
+          );
+
+          res.json({ token, role: user.role });
+        }
+      );
+    } catch (error) {
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+}
