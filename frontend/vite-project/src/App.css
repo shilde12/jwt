@@ -16,7 +16,14 @@ body {
 .container {
     max-width: 800px;
     margin: 0 auto;
+    border-color: #007BFF;
+    background-color: white;
+    border-radius: 1.5rem;
     padding: 20px;
+}
+
+form{
+    margin-top: 0.5rem;
 }
 
 h1 {

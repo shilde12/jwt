@@ -9,7 +9,6 @@ export class UserController {
     try {
       const { email, password } = req.body;
 
-      // Verificar se o usuário já existe
       database.get(
         "SELECT * FROM users WHERE email = ?",
         [email],
@@ -22,7 +21,6 @@ export class UserController {
             return res.status(400).json({ error: "User already exists" });
           }
 
-          // Criar novo usuário
           const hashedPassword = await bcrypt.hash(password, 10);
 
           database.run(

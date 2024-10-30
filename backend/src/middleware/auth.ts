@@ -1,3 +1,4 @@
+import { error } from "console";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
@@ -6,34 +7,17 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization;
+  const token = req.headers["x-token"];
 
-  if (!authHeader) {
-    return res.status(401).json({ error: "No token provided" });
+  if (!token) {
+    res.status(403).json({ message: "Token faltando!" })
   }
 
-  const parts = authHeader.split(" ");
-
-  if (parts.length !== 2) {
-    return res.status(401).json({ error: "Token error" });
-  }
-
-  const [scheme, token] = parts;
-
-  if (!/^Bearer$/i.test(scheme)) {
-    return res.status(401).json({ error: "Token malformatted" });
-  }
-
-  jwt.verify(
-    token,
-    process.env.JWT_SECRET || "fallback_secret",
-    (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ error: "Token invalid" });
-      }
-
-      req.user = decoded;
-      return next();
+  jwt.verify(token!.toString(), "senha", (error) => {
+    if (error) {
+      res.status(403).json({ message: "Token inválido!" })
     }
-  );
+
+    next();
+  })
 };
