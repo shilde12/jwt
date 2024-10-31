@@ -10,9 +10,8 @@ export function UserDashboard() {
   };
 
   return (
-    <div className="container">
-      <h1>Bem-vindo ao Painel do Usuário</h1>
-      <p>Você está logado como um usuário comum.</p>
+    <div className="container-user">
+      <h1>Você está logado como um usuário comum</h1>
       <button onClick={handleLogout}>Logout</button>
     </div>
   );
